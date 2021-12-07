@@ -22,4 +22,4 @@
         ylab("PDF") + 
         theme(legend.position = "none")
       ggsave(filename="Figures\\2_Normal_Distributions.png",
-             device="png")
+             device="png", width=7.5, height=6.5, units="in")
