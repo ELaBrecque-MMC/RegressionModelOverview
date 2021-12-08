@@ -129,13 +129,11 @@
         #Also, note that the default link function for the binomial family 
         #is the logit. (See ?stats::family). The call above is identical to the
         #following:
-          test <- gam(y/n~s(x0)+s(x1)+s(x2)+s(x3),family=binomial,
-                      data=dat,weights=n,method="REML",
-                      link="logit")
+          test <- gam(y/n~s(x0)+s(x1)+s(x2)+s(x3),family=binomial(link="logit"),
+                      data=dat,weights=n,method="REML")
           summary(lr.fit)
           summary(test) #Identical to summary(lr.fit)
-    
-    
+
     par(mfrow=c(2,2))
     
     #The following code shows how to evaluate the fit of the model to the 
@@ -163,9 +161,71 @@
       qq.gam(pif,pch=19,cex=.3)
       qq.gam(pif,rep=100,level=.9)
       qq.gam(pif,rep=100,level=1,type="pearson",pch=19,cex=.2)      
+      dev.off()
           
-          
-          
+  #Input Crance's bearded seal data and create preliminary models
+      
+    #Input data
+      seal.dat <- read.csv("Data\\Bearded overwinter data - R figuring_forMF_byPng.csv")
+      summary(seal.dat)
+      
+      #Rename some fields, to simplify
+        idx <- which(names(seal.dat)=="X.yes")
+        names(seal.dat)[idx] <- "Yes"
+        
+        idx <- which(names(seal.dat)=="X.Pngs")
+        names(seal.dat)[idx] <- "Pngs"
+        
+        summary(seal.dat)
+        
+    #CalJulian gam; logit link
+    
+      CalJulian.logit <- gam(Yes/Pngs ~ s(CalJulian, bs="cc"), #cyclic cubic regression spline
+                                          data = seal.dat,
+                                          weights = Pngs,
+                                          method="REML",  #Restricted maximum likelihood to fit model
+                                          family=binomial(link="logit"))
+      plot(CalJulian.logit)
+                                            
+    #Ice gam; logit link
+    
+      Ice.logit <- gam(Yes/Pngs ~ s(Ice, bs="ts"), #thin plate regression spline w/ shrinkage
+                                          data = seal.dat,
+                                          weights = Pngs,
+                                          method="REML",  #Restricted maximum likelihood to fit model
+                                          family=binomial(link="logit"))
+      plot(Ice.logit)
+
+    #Distance gam; logit link.
+    #The gam produces an error because there are only 9 unique distances. 
+    
+      #Distance.logit.gam <- gam(Yes/Pngs ~ s(Distance, bs="ts"), #thin plate regression spline w/ shrinkage
+      #                                    data = seal.dat,
+      #                                    weights = Pngs,
+      #                                    method="REML",  #Restricted maximum likelihood to fit model
+      #                                    family=binomial(link="logit"))
+      #Try just a glm with Distance as a covariate
+        Distance.logit.glm <- glm(Yes/Pngs ~ Distance,
+                                            data = seal.dat,
+                                            weights = Pngs,
+                                            family=binomial(link="logit"))
+        plot(Distance.logit.glm)
+      
+      
+        
+    #Global gam; mooring as a fixed factor affecting only intercept; logit link
+    
+      global.logit <- gam(Yes/Pngs ~ s(CalJulian, bs="cc") + #cyclic cubic regression spline
+                                       Mooring +               #Mooring as a fixed effect (factor) that
+                                                               #  can only affect the intercept
+                                       s(Ice, bs="ts") +       #thin plate regression spline w/ shrinkage
+                                       s(Year, bs="ts"),
+                            data = seal.dat,
+                            weights = Pngs,
+                            method="REML",                     #Restricted maximum likelihood to fit model
+                            family=binomial(link="logit"))
+                              
+                             
           
           
           
