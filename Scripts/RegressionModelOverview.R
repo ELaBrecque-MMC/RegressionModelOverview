@@ -23,7 +23,8 @@
         scale_color_hue(labels=c("mean=0, sd=1", 
                                  "mean=3, sd=0.6")) +
         theme(legend.title = element_blank(),
-              legend.text = element_text(size=14))        
+              legend.text = element_text(size=14),
+              legend.position = "top")        
       ggsave(filename="Figures\\2_Normal_Distributions.png",
              device="png", width=7.5, height=6.5, units="in")
       
@@ -60,7 +61,8 @@
                                  "p=0.7, n=20",
                                  "p=0.5, n=40")) +
         theme(legend.title = element_blank(),
-              legend.text = element_text(size=14))
+              legend.text = element_text(size=14),
+              legend.position = "top")
       ggsave(filename="Figures\\3_Binomial_Distributions.png",
              device="png", width=7.5, height=6.5, units="in")
       
