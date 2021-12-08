@@ -197,7 +197,9 @@
       plot(Ice.logit)
 
     #Distance gam; logit link.
-    #The gam produces an error because there are only 9 unique distances. 
+    #The gam produces an error because there are only 9 unique distances and the 
+    #default basis dimension for a ts spline is larger than that. See note about
+    #k and choose.k in the Year gam below for more information.
     
       #Distance.logit.gam <- gam(Yes/Pngs ~ s(Distance, bs="ts"), #thin plate regression spline w/ shrinkage
       #                                    data = seal.dat,
@@ -210,20 +212,48 @@
                                             weights = Pngs,
                                             family=binomial(link="logit"))
         plot(Distance.logit.glm)
+        
+    #Year gam; logit link. Because there are only 5 years, need to set the argument
+    #k (basis dimension) in the smooth term to a value <= 5 or else the following
+    #error occurs: 
+    #  "Error in smooth.construct.tp.smooth.spec(object, data, knots) : 
+    #  A term has fewer unique covariate combinations than specified maximum 
+    #  degrees of freedom"
+    #See the choose.k helpfile for more information, including the following:
+    #  "In practice k-1 (or k) sets the upper limit on the degrees of freedom 
+    #   associated with an s smooth (1 degree of freedom is usually lost to the 
+    #   identifiability constraint on the smooth)." 
+    
+      Year.logit.ts <- gam(Yes/Pngs ~ s(Year, bs="ts", k=5), #thin plate regression spline w/ shrinkage
+                                          data = seal.dat,
+                                          weights = Pngs,
+                                          method="REML",  #Restricted maximum likelihood to fit model
+                                          family=binomial(link="logit"))
+      plot(Year.logit.ts)
+      
+      Year.logit.cs <- gam(Yes/Pngs ~ s(Year, bs="cs", k=5), #cubic regression spline w/ shrinkage
+                                          data = seal.dat,
+                                          weights = Pngs,
+                                          method="REML",  #Restricted maximum likelihood to fit model
+                                          family=binomial(link="logit"))
+      plot(Year.logit.cs)
+        
       
       
         
-    #Global gam; mooring as a fixed factor affecting only intercept; logit link
+    #Global gam; mooring as a fixed factor affecting only intercept (this is 
+    #likely a poor choice); logit link.
     
-      global.logit <- gam(Yes/Pngs ~ s(CalJulian, bs="cc") + #cyclic cubic regression spline
+      global.logit.int <- gam(Yes/Pngs ~ s(CalJulian, bs="cc") + #cyclic cubic regression spline
                                        Mooring +               #Mooring as a fixed effect (factor) that
                                                                #  can only affect the intercept
                                        s(Ice, bs="ts") +       #thin plate regression spline w/ shrinkage
-                                       s(Year, bs="ts"),
+                                       s(Year, bs="ts", k=5),
                             data = seal.dat,
                             weights = Pngs,
                             method="REML",                     #Restricted maximum likelihood to fit model
                             family=binomial(link="logit"))
+      plot(global.logit.int)
                               
                              
           
