@@ -177,7 +177,10 @@
         names(seal.dat)[idx] <- "Pngs"
         
         summary(seal.dat)
-        
+
+      #Make sure Mooring is a factor variable
+        seal.dat$Mooring <- as.factor(seal.dat$Mooring)
+                
     #CalJulian gam; logit link
     
       CalJulian.logit <- gam(Yes/Pngs ~ s(CalJulian, bs="cc"), #cyclic cubic regression spline
@@ -199,7 +202,8 @@
     #Distance gam; logit link.
     #The gam produces an error because there are only 9 unique distances and the 
     #default basis dimension for a ts spline is larger than that. See note about
-    #k and choose.k in the Year gam below for more information.
+    #k and choose.k in the Year gam below for more information. I think the max 
+    #k that will work for Distance is 9, but I didn't actually try to run that.
     
       #Distance.logit.gam <- gam(Yes/Pngs ~ s(Distance, bs="ts"), #thin plate regression spline w/ shrinkage
       #                                    data = seal.dat,
@@ -237,10 +241,7 @@
                                           method="REML",  #Restricted maximum likelihood to fit model
                                           family=binomial(link="logit"))
       plot(Year.logit.cs)
-        
-      
-      
-        
+
     #Global gam; mooring as a fixed factor affecting only intercept (this is 
     #likely a poor choice); logit link.
     
@@ -255,7 +256,42 @@
                             family=binomial(link="logit"))
       plot(global.logit.int)
                               
-                             
+    #CalJulian hgam; "GS" model structure from Pedersen et al. (2019), with mooring  
+    #as a factor in the smooth for CalJulian, creating a shared global trend with
+    #individual smooths for each mooring that share the smoothing parameter; 
+    #logit link. For more information on bs="fs", see also 
+    #?mgcv::factor.smooth.interaction.
+    
+      CalJulian.logit.GS <- gam(Yes/Pngs ~ s(CalJulian, bs="cc", m=2) + #cyclic cubic regression spline
+                                           s(CalJulian, Mooring, bs="fs", m=2), 
+                            data = seal.dat,
+                            weights = Pngs,
+                            method="REML",                     #Restricted maximum likelihood to fit model
+                            family=binomial(link="logit"))
+      plot(CalJulian.logit.GS)
+      
+      #This model doesn't work yet. Tried to explicitly state cc smooth for 
+      #factor-smooth interaction. See ?mgcv::factor.smooth.interaction.
+      CalJulian.logit.GS.xt <- gam(Yes/Pngs ~ s(CalJulian, bs="cc", m=2) + #cyclic cubic regression spline
+                                           s(CalJulian, Mooring, bs="fs", xt="cc", m=2), #cyclic cubic regression spline
+                            data = seal.dat,
+                            weights = Pngs,
+                            method="REML",                     #Restricted maximum likelihood to fit model
+                            family=binomial(link="logit"))
+      plot(CalJulian.logit.GS.xt)
+
+    #Ice hgam; "GS" model structure from Pedersen et al. (2019), with mooring  
+    #as a factor in the smooth for Ice, creating a shared global trend with
+    #individual smooths for each mooring that share the smoothing parameter; 
+    #logit link.
+    
+      Ice.logit.GS <- gam(Yes/Pngs ~ s(Ice, bs="ts", m=2) + #thin plate regression spline w/ shrinkage
+                                     s(Ice, Mooring, bs="fs", m=2), 
+                            data = seal.dat,
+                            weights = Pngs,
+                            method="REML",                     #Restricted maximum likelihood to fit model
+                            family=binomial(link="logit"))
+      plot(Ice.logit.GS)
           
           
           
