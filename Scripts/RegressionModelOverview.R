@@ -1,4 +1,4 @@
-#Script RegressionModelOverview.r...Megan C. Ferguson...7 December 2021
+#Script RegressionModelOverview.r...Megan C. Ferguson...8 December 2021
 
   library(ggplot2)
 
@@ -80,7 +80,7 @@
       dat <- gamSim(1,n=n.samp,dist="binary",scale=.33) #Simulate data
       
       p <- binomial()$linkinv(dat$f) ## binomial p
-        #Break down the command above. Type ?stats::family in the R console to 
+        #Break down the command above: Type ?stats::family in the R console to 
         #view the R helpfile that explains this further.
           B <- binomial() #Create an object called B that is class "family",
                           #in this case, the binomial family
@@ -102,22 +102,24 @@
             summary(test - p) #These are identical
 
       n <- sample(c(1,3),n.samp,replace=TRUE) ## binomial n
-        #Break down the command above. sample() is a function that 
+        #Break down the command above: sample() is a function that 
         #randomly samples from the elements in c(1,3), n.samp times, with
         #replacement. n.samp is defined as 400 above. So, n is just a 
         #vector with 400 elements that is composed of a random assignment
-        #of 1s and 3s.
+        #of 1s and 3s, representing total # of trials for use by rbinom
+        #below.
       
       dat$y <- rbinom(n,n,p)
-        #Break down the command above. rbinom() creates length(n) random 
+        #Break down the command above: rbinom() creates length(n) random 
         #numbers from the binomial distribution. The binomial distribution
         #is defined by two parameters: 1) the number of trials (called n
         #here); and 2) the probability of success on each trial (p). The 
-        #result is a vector y. The ith element of y, y[i], is the result
+        #result is a vector y, the randomly-generated number of successes. 
+        #The ith element of y, y[i], is the result
         #of randomly drawing from the binomial distribution with number of
         #trials equal to n[i] and probability of success on a single trial
-        #equal to p[i]. y corresponds to the number of successes out of 
-        #n trials.
+        #equal to p[i]. y[i] corresponds to the number of successes out of 
+        #n[i] trials.
       
       dat$n <- n #Save the n created above to dataframe dat
       
@@ -195,28 +197,24 @@
       Ice.logit <- gam(Yes/Pngs ~ s(Ice, bs="ts"), #thin plate regression spline w/ shrinkage
                                           data = seal.dat,
                                           weights = Pngs,
-                                          method="REML",  #Restricted maximum likelihood to fit model
+                                          method="REML",  
                                           family=binomial(link="logit"))
       plot(Ice.logit)
 
     #Distance gam; logit link.
-    #The gam produces an error because there are only 9 unique distances and the 
+    #Set k=7 in s(Distance) because there are only 7 unique distances and the 
     #default basis dimension for a ts spline is larger than that. See note about
-    #k and choose.k in the Year gam below for more information. I think the max 
-    #k that will work for Distance is 9, but I didn't actually try to run that.
+    #k and choose.k in the Year gam below for more information. The default k
+    #is 10, and if you try building the gam with the default setting you'll
+    #get an error.
     
-      #Distance.logit.gam <- gam(Yes/Pngs ~ s(Distance, bs="ts"), #thin plate regression spline w/ shrinkage
-      #                                    data = seal.dat,
-      #                                    weights = Pngs,
-      #                                    method="REML",  #Restricted maximum likelihood to fit model
-      #                                    family=binomial(link="logit"))
-      #Try just a glm with Distance as a covariate
-        Distance.logit.glm <- glm(Yes/Pngs ~ Distance,
-                                            data = seal.dat,
-                                            weights = Pngs,
-                                            family=binomial(link="logit"))
-        plot(Distance.logit.glm)
-        
+      Distance.logit.gam <- gam(Yes/Pngs ~ s(Distance, bs="ts", k=7), #specify k
+                                          data = seal.dat,
+                                          weights = Pngs,
+                                          method="REML",  
+                                          family=binomial(link="logit"))
+      plot(Distance.logit.gam)
+
     #Year gam; logit link. Because there are only 5 years, need to set the argument
     #k (basis dimension) in the smooth term to a value <= 5 or else the following
     #error occurs: 
@@ -231,65 +229,66 @@
       Year.logit.ts <- gam(Yes/Pngs ~ s(Year, bs="ts", k=5), #thin plate regression spline w/ shrinkage
                                           data = seal.dat,
                                           weights = Pngs,
-                                          method="REML",  #Restricted maximum likelihood to fit model
+                                          method="REML",  
                                           family=binomial(link="logit"))
       plot(Year.logit.ts)
       
       Year.logit.cs <- gam(Yes/Pngs ~ s(Year, bs="cs", k=5), #cubic regression spline w/ shrinkage
                                           data = seal.dat,
                                           weights = Pngs,
-                                          method="REML",  #Restricted maximum likelihood to fit model
+                                          method="REML",  
                                           family=binomial(link="logit"))
       plot(Year.logit.cs)
 
     #Global gam; mooring as a fixed factor affecting only intercept (this is 
     #likely a poor choice); logit link.
     
-      global.logit.int <- gam(Yes/Pngs ~ s(CalJulian, bs="cc") + #cyclic cubic regression spline
+      global.logit.int <- gam(Yes/Pngs ~ s(CalJulian, bs="cc") + 
                                        Mooring +               #Mooring as a fixed effect (factor) that
                                                                #  can only affect the intercept
-                                       s(Ice, bs="ts") +       #thin plate regression spline w/ shrinkage
+                                       s(Ice, bs="ts") +       
                                        s(Year, bs="ts", k=5),
                             data = seal.dat,
                             weights = Pngs,
-                            method="REML",                     #Restricted maximum likelihood to fit model
+                            method="REML",                     
                             family=binomial(link="logit"))
       plot(global.logit.int)
                               
-    #CalJulian hgam; "GS" model structure from Pedersen et al. (2019), with mooring  
+    #CalJulian hgam. "GS" model structure from Pedersen et al. (2019), with mooring  
     #as a factor in the smooth for CalJulian, creating a shared global trend with
-    #individual smooths for each mooring that share the smoothing parameter; 
-    #logit link. For more information on bs="fs", see also 
+    #individual smooths for each mooring that share the smoothing parameter. 
+    #logit link. For more information on bs="fs", see  
     #?mgcv::factor.smooth.interaction.
     
-      CalJulian.logit.GS <- gam(Yes/Pngs ~ s(CalJulian, bs="cc", m=2) + #cyclic cubic regression spline
-                                           s(CalJulian, Mooring, bs="fs", m=2), 
+      CalJulian.logit.GS <- gam(Yes/Pngs ~ s(CalJulian, bs="cc", m=2) +
+                                           s(CalJulian, Mooring, bs="fs", m=2), #not sure if I need "cc" anywhere here
                             data = seal.dat,
                             weights = Pngs,
-                            method="REML",                     #Restricted maximum likelihood to fit model
+                            method="REML",                     
                             family=binomial(link="logit"))
       plot(CalJulian.logit.GS)
       
-      #This model doesn't work yet. Tried to explicitly state cc smooth for 
-      #factor-smooth interaction. See ?mgcv::factor.smooth.interaction.
-      CalJulian.logit.GS.xt <- gam(Yes/Pngs ~ s(CalJulian, bs="cc", m=2) + #cyclic cubic regression spline
-                                           s(CalJulian, Mooring, bs="fs", xt="cc", m=2), #cyclic cubic regression spline
+      #I think this is the correct model because it specifies cc splines to 
+      #for the global smooth and each factor level smooth.
+        CalJulian.logit.GS.xt <- gam(Yes/Pngs ~ s(CalJulian, bs="cc", m=2) + 
+                                                s(CalJulian, Mooring, bs="fs", 
+                                                  xt=list(bs="cc"), m=2), #cc
                             data = seal.dat,
                             weights = Pngs,
-                            method="REML",                     #Restricted maximum likelihood to fit model
+                            method="REML",                     
                             family=binomial(link="logit"))
       plot(CalJulian.logit.GS.xt)
 
-    #Ice hgam; "GS" model structure from Pedersen et al. (2019), with mooring  
+    #Ice hgam. "GS" model structure from Pedersen et al. (2019), with mooring  
     #as a factor in the smooth for Ice, creating a shared global trend with
-    #individual smooths for each mooring that share the smoothing parameter; 
+    #individual smooths for each mooring that share the smoothing parameter. 
     #logit link.
     
-      Ice.logit.GS <- gam(Yes/Pngs ~ s(Ice, bs="ts", m=2) + #thin plate regression spline w/ shrinkage
+      Ice.logit.GS <- gam(Yes/Pngs ~ s(Ice, bs="ts", m=2) + 
                                      s(Ice, Mooring, bs="fs", m=2), 
                             data = seal.dat,
                             weights = Pngs,
-                            method="REML",                     #Restricted maximum likelihood to fit model
+                            method="REML",                     
                             family=binomial(link="logit"))
       plot(Ice.logit.GS)
           
