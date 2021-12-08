@@ -2,32 +2,6 @@
 
   library(ggplot2)
 
-  #What is the normal distribution?
-
-    #Plot the probability density functions for two normal distributions:
-    #dens1 has a mean=0 and standard deviation=1
-    #dens2 has mean=3, sd=0.6
-      x <- seq(from=-4, to=6, by=0.01)
-      dens1 <- dnorm(x,
-                     mean=0,
-                     sd = 1)
-      dens2 <- dnorm(x,
-                     mean=3,
-                     sd = 0.6)
-      df.dens <- cbind.data.frame(x, dens1, dens2)
-      ggplot(df.dens, aes(x)) +
-        geom_line(aes(y = dens1, colour = "dens1")) + 
-        geom_line(aes(y = dens2, colour = "dens2")) +
-        xlab("Y") +
-        ylab("PDF") + 
-        scale_color_hue(labels=c("mean=0, sd=1", 
-                                 "mean=3, sd=0.6")) +
-        theme(legend.title = element_blank(),
-              legend.text = element_text(size=14),
-              legend.position = "top")        
-      ggsave(filename="Figures\\2_Normal_Distributions.png",
-             device="png", width=7.5, height=6.5, units="in")
-      
   #What is the binomial distribution?
 
     #Plot the probability density functions for three Bin distributions:
@@ -66,19 +40,138 @@
       ggsave(filename="Figures\\3_Binomial_Distributions.png",
              device="png", width=7.5, height=6.5, units="in")
       
+  #What is the normal distribution?
+
+    #Plot the probability density functions for two normal distributions:
+    #dens1 has a mean=0 and standard deviation=1
+    #dens2 has mean=3, sd=0.6
+      x <- seq(from=-4, to=6, by=0.01)
+      dens1 <- dnorm(x,
+                     mean=0,
+                     sd = 1)
+      dens2 <- dnorm(x,
+                     mean=3,
+                     sd = 0.6)
+      df.dens <- cbind.data.frame(x, dens1, dens2)
+      ggplot(df.dens, aes(x)) +
+        geom_line(aes(y = dens1, colour = "dens1")) + 
+        geom_line(aes(y = dens2, colour = "dens2")) +
+        xlab("Y") +
+        ylab("PDF") + 
+        scale_color_hue(labels=c("mean=0, sd=1", 
+                                 "mean=3, sd=0.6")) +
+        theme(legend.title = element_blank(),
+              legend.text = element_text(size=14),
+              legend.position = "top")        
+      ggsave(filename="Figures\\2_Normal_Distributions.png",
+             device="png", width=7.5, height=6.5, units="in")
       
+  #A binomial, link="logit" (i.e., logistic) GAM from the mgcv package manual,
+  #mgcv.pdf, page 200
       
+    library(mgcv)
       
+    ## simulate binomial data...
+      set.seed(0) #Set seed for random number generator to get the same
+                  #random numbers every time
       
+      n.samp <- 400 #Set sample size
       
+      dat <- gamSim(1,n=n.samp,dist="binary",scale=.33) #Simulate data
       
+      p <- binomial()$linkinv(dat$f) ## binomial p
+        #Break down the command above. Type ?stats::family in the R console to 
+        #view the R helpfile that explains this further.
+          B <- binomial() #Create an object called B that is class "family",
+                          #in this case, the binomial family
+          
+          #Investgate B, which is a list with multiple named elements
+            class(B) #The class of B.
+            names(B) #The names assigned to B.
+            B$family #The family name, as a character.
+            B$link   #The name of the link function, as a character.
+            B$linkfun#The link function, as a function.
+                     #The logit link function is defined as log(p/(1-p))
+            B$linkinv#The inverse of the link function, as a function.
+                     #The inverse logit is exp(x)/(1 + exp(x))
+            
+          #So, binomial()$linkinv(dat$f) applies the inverse logit function
+          #to the values stored in dat$f:
+            
+            test <- exp(dat$f)/(1 + exp(dat$f)) #Compute "p" manually
+            summary(test - p) #These are identical
+
+      n <- sample(c(1,3),n.samp,replace=TRUE) ## binomial n
+        #Break down the command above. sample() is a function that 
+        #randomly samples from the elements in c(1,3), n.samp times, with
+        #replacement. n.samp is defined as 400 above. So, n is just a 
+        #vector with 400 elements that is composed of a random assignment
+        #of 1s and 3s.
       
+      dat$y <- rbinom(n,n,p)
+        #Break down the command above. rbinom() creates length(n) random 
+        #numbers from the binomial distribution. The binomial distribution
+        #is defined by two parameters: 1) the number of trials (called n
+        #here); and 2) the probability of success on each trial (p). The 
+        #result is a vector y. The ith element of y, y[i], is the result
+        #of randomly drawing from the binomial distribution with number of
+        #trials equal to n[i] and probability of success on a single trial
+        #equal to p[i]. y corresponds to the number of successes out of 
+        #n trials.
       
+      dat$n <- n #Save the n created above to dataframe dat
       
+      lr.fit <- gam(y/n~s(x0)+s(x1)+s(x2)+s(x3),family=binomial,
+                    data=dat,weights=n,method="REML")
+        #Here, y/n is the proportion of successes, computed as the number
+        #of successful trials divided by the total number of trials.
       
+        #Also, note that the default link function for the binomial family 
+        #is the logit. (See ?stats::family). The call above is identical to the
+        #following:
+          test <- gam(y/n~s(x0)+s(x1)+s(x2)+s(x3),family=binomial,
+                      data=dat,weights=n,method="REML",
+                      link="logit")
+          summary(lr.fit)
+          summary(test) #Identical to summary(lr.fit)
+    
+    
+    par(mfrow=c(2,2))
+    
+    #The following code shows how to evaluate the fit of the model to the 
+    #simulated data
+    
+      ## normal QQ-plot of deviance residuals
+      qqnorm(residuals(lr.fit),pch=19,cex=.3)
       
+      ## Quick QQ-plot of deviance residuals
+      qq.gam(lr.fit,pch=19,cex=.3)
       
+      ## Simulation based QQ-plot with reference bands
+      qq.gam(lr.fit,rep=100,level=.9)
       
-      
-      
+      ## Simulation based QQ-plot, Pearson resids, all
+      ## simulated reference plots shown...
+      qq.gam(lr.fit,rep=100,level=1,type="pearson",pch=19,cex=.2)
+    
+    ## Now fit the wrong model and check....
+      #This shows what the model evaluation plots look like when the wrong
+      #model is used to fit the data.
+      pif <- gam(y~s(x0)+s(x1)+s(x2)+s(x3),family=poisson,data=dat,method="REML")
+      par(mfrow=c(2,2))
+      qqnorm(residuals(pif),pch=19,cex=.3)
+      qq.gam(pif,pch=19,cex=.3)
+      qq.gam(pif,rep=100,level=.9)
+      qq.gam(pif,rep=100,level=1,type="pearson",pch=19,cex=.2)      
+          
+          
+          
+          
+          
+          
+          
+          
+          
+          
+          
       
