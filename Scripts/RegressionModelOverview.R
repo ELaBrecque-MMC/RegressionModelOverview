@@ -356,26 +356,6 @@
                             family=binomial(link="logit"))
       plot(Ice.logit.GS)
       
-    #Other types of variables and models to consider:
-    # i. Consider examining latitude of each mooring instead of 
-    #    mooring as a factor variable.
-    # ii. Regular gam with a bivariate smooth tensor product smooth 
-    #      te(date, latitude). From the ?te helpfile: 
-    #      "Tensor product smooths are especially useful for representing 
-    #       functions of covariates measured in different units, although they 
-    #       are typically not quite as nicely behaved as t.p.r.s. smooths for 
-    #       well scaled covariates." In other words, te smooths can be anisotropic,
-    #       whereas tprs smooths are only isotropic.
-    # iii. Regular gam with a trivariate smooth: te(date, latitude, ice)
-    # iv. Hierarchical gam s(date, Mooring). Here, because date is not a cyclical
-    #    variable (the ends don't need to match up), don't need to use bs="cc".
-    # v. hgam s(date, ice, mooring).
-    # vi. Evaluate whether the logit link is appropriate. Another potential
-    #    link fcn to use is the cloglog link.
-    # vii. Evaluate whether the binomial distribution is appropriate. If there
-    #   are an overwhelmingly large number of zeros in the data, a zero-inflated
-    #   binomial model might be better.
-          
     #Create a fake latitude variable, numbered 1:9 from south to north based on 
     #mooring location. Based on the mooring map in Jess's manuscript, I think
     #the correct order is as follows:
@@ -422,23 +402,49 @@
                                       weights = Pngs,
                                       method="REML",  
                                       family=binomial(link="logit"))
-        plot(AJD.Fake.Lat.Ice.logit) #I don't know how to interpret these!!
+        plot(AJD.Fake.Lat.Ice.logit) #These default figures are awful!!
           #I think each plot is showing Fake.Lat on the x-axis and AJD on the 
-          #y-axis. Then, each plot sets Ice to be a constant value and the
-          #colors and contours show the value of the spline.
+          #y-axis. Then, each plot sets Ice to be a constant value, and the
+          #colors and contours show the value of the spline. I think the 
+          #supplementary files for Pedersen et al. 2019 likely have good
+          #examples of how to build better plots for these types of models.
+          #Files available at https://github.com/eric-pedersen/mixed-effect-gams;
+          #open supplemental_code.r and search for bird_modGS, which is Figure
+          #12 in the manuscript.
           
     #AJD and Ice hgam. "GS" model structure from Pedersen et al. (2019), with mooring  
     #as a factor in the smooth for AJD and Ice, creating a shared global trend with
     #individual smooths for each mooring that share the smoothing parameter. 
-    #logit link.
+    #logit link. See p. 15 of Pedersen et al. 2019 for coding details and his
+    #supplemental_code.r for plotting suggestions. 
     
-      AJD.Ice.logit.GS <- gam(Yes/Pngs ~ s(Ice, bs="ts", m=2) + 
-                                     s(Ice, Mooring, bs="fs", m=2), 
-                            data = seal.dat,
-                            weights = Pngs,
-                            method="REML",                     
-                            family=binomial(link="logit"))
-      plot(AJD.Ice.logit.GS)
+      #This model takes a while to build.  
+        AJD.Ice.logit.GS <- gam(Yes/Pngs ~ te(AJD, Ice, bs="tp", m=2) + 
+                                         t2(AJD, Ice, Mooring, 
+                                            bs=c("tp", "tp", "re"),
+                                            m=2, full=TRUE), 
+                                        data = seal.dat,
+                                        weights = Pngs,
+                                        method="REML",                     
+                                        family=binomial(link="logit"))
+        plot(AJD.Ice.logit.GS) #This plot is not very helpful
+          
+    #Other types of variables and models to consider:
+    # i. Consider examining latitude of each mooring instead of 
+    #    mooring as a factor variable.
+    # ii. Regular gam with a bivariate tensor product smooth 
+    #      te(date, latitude). From the ?te helpfile: 
+    #      "Tensor product smooths are especially useful for representing 
+    #       functions of covariates measured in different units, although they 
+    #       are typically not quite as nicely behaved as t.p.r.s. smooths for 
+    #       well scaled covariates." In other words, te smooths can be anisotropic,
+    #       whereas tprs smooths are only isotropic.
+    # iii. Regular gam with a trivariate smooth: te(date, latitude, ice)
+    # iv. Evaluate whether the logit link is appropriate. Another potential
+    #    link fcn to use is the cloglog link.
+    # v. Evaluate whether the binomial distribution is appropriate. If there
+    #   are an overwhelmingly large number of zeros in the data, a zero-inflated
+    #   binomial model might be better.
           
           
           
