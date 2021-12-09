@@ -1,4 +1,4 @@
-#Script RegressionModelOverview.r...Megan C. Ferguson...8 December 2021
+#Script RegressionModelOverview.r...Megan C. Ferguson...9 December 2021
 
   library(ggplot2)
 
@@ -261,31 +261,37 @@
     #likely a poor choice). logit link.
     
       global.logit.int <- gam(Yes/Pngs ~ s(CalJulian, bs="cc") + 
-                                       Mooring +               #Mooring as a fixed effect (factor) that
-                                                               #  can only affect the intercept
+                                       Mooring + #Mooring as a fixed effect (factor) that
+                                                 #  can only affect the intercept
                                        s(Ice, bs="ts") +       
                                        s(Year, bs="ts", k=5),
                             data = seal.dat,
                             weights = Pngs,
                             method="REML",                     
                             family=binomial(link="logit"))
-      plot(global.logit.int)
+      plot(global.logit.int) #Note that the plots are all scaled to have the
+      #same range on the y-axis. Can change that using the scale argument
+      #to plot.gam, as follows:
+        plot(global.logit.int, scale=0)
                               
     #CalJulian hgam. "GS" model structure from Pedersen et al. (2019), with mooring  
     #as a factor in the smooth for CalJulian, creating a shared global trend with
-    #individual smooths for each mooring that share the smoothing parameter. 
+    #individual smooths for each mooring, and each factor-level smooth shares
+    #the same smoothing parameter. 
     #logit link. For more information on bs="fs", see  
     #?mgcv::factor.smooth.interaction.
     
-      CalJulian.logit.GS <- gam(Yes/Pngs ~ s(CalJulian, bs="cc", m=2) +
+      #I don't think this is the best way to model this. See CalJulian.logit.GS.xt
+      #and associated notes below for a better approach and rationale.   
+        CalJulian.logit.GS <- gam(Yes/Pngs ~ s(CalJulian, bs="cc", m=2) +
                                            s(CalJulian, Mooring, bs="fs", m=2), #not sure if I need "cc" anywhere here
                             data = seal.dat,
                             weights = Pngs,
                             method="REML",                     
                             family=binomial(link="logit"))
-      plot(CalJulian.logit.GS)
+        plot(CalJulian.logit.GS)
       
-      #I think this is the correct model because it specifies cc splines  
+      #I think the next model is the correct model because it specifies cc splines  
       #for the global smooth and also for each factor level smooth. The following
       #is from ?mgcv::factor.smooth.interaction :
       #  "Any singly penalized basis can be used to smooth at each factor level. 
