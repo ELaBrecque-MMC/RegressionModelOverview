@@ -178,10 +178,9 @@
         idx <- which(names(seal.dat)=="X.Pngs")
         names(seal.dat)[idx] <- "Pngs"
         
-        summary(seal.dat)
-
       #Make sure Mooring is a factor variable
         seal.dat$Mooring <- as.factor(seal.dat$Mooring)
+        summary(seal.dat)
                 
     #CalJulian gam; logit link
     
@@ -268,7 +267,7 @@
                             family=binomial(link="logit"))
       plot(CalJulian.logit.GS)
       
-      #I think this is the correct model because it specifies cc splines to 
+      #I think this is the correct model because it specifies cc splines  
       #for the global smooth and each factor level smooth.
         CalJulian.logit.GS.xt <- gam(Yes/Pngs ~ s(CalJulian, bs="cc", m=2) + 
                                                 s(CalJulian, Mooring, bs="fs", 
@@ -277,7 +276,7 @@
                             weights = Pngs,
                             method="REML",                     
                             family=binomial(link="logit"))
-      plot(CalJulian.logit.GS.xt)
+        plot(CalJulian.logit.GS.xt)
 
     #Ice hgam. "GS" model structure from Pedersen et al. (2019), with mooring  
     #as a factor in the smooth for Ice, creating a shared global trend with
@@ -291,6 +290,29 @@
                             method="REML",                     
                             family=binomial(link="logit"))
       plot(Ice.logit.GS)
+      
+    #Other types of variables and models to consider:
+    # i. First, try creating a variable for "date" that incorporates year, month, 
+    #    and day. (I'm not sure if that's what ActualJulianDate is.) Use this 
+    #    as a simple way to look for year effects.
+    # ii. Also consider examining latitude of each mooring instead of 
+    #    mooring as a factor variable.
+    # iii. Regular gam with a bivariate smooth tensor product smooth 
+    #      te(date, latitude). From the ?te helpfile: 
+    #      "Tensor product smooths are especially useful for representing 
+    #       functions of covariates measured in different units, although they 
+    #       are typically not quite as nicely behaved as t.p.r.s. smooths for 
+    #       well scaled covariates." In other words, te smooths can be anisotropic,
+    #       whereas tprs smooths are only isotropic.
+    # iv. Regular gam with a trivariate smooth: te(date, latitude, ice)
+    # v. Hierarchical gam s(date, Mooring). Here, because date is not a cyclical
+    #    variable (the ends don't need to match up), don't need to use bs="cc".
+    # vi. hgam s(date, ice, mooring).
+    # vii. Evaluate whether the logit link is appropriate. Another potential
+    #    link fcn to use is the cloglog link.
+    # viii. Evaluate whether the binomial distribution is appropriate. If there
+    #   are an overwhelmingly large number of zeros in the data, a zero-inflated
+    #   binomial model might be better.
           
           
           
