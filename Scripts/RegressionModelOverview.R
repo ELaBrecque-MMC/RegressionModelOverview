@@ -190,10 +190,27 @@
                                           method="REML",  #Restricted maximum likelihood to fit model
                                           family=binomial(link="logit"))
       plot(CalJulian.logit)
+      
+    #ActualJulianDate (scaled) gam; logit link
+      
+      #Scale ActualJulianDate to minimize chances of running into parameter estimation
+      #issues during model fitting
+      
+        seal.dat$AJD <- seal.dat$ActualJulianDate/10000
+        head(seal.dat$AJD)
+        summary(seal.dat$ActualJulianDate)
+        summary(seal.dat$AJD)
+
+        AJD.logit <- gam(Yes/Pngs ~ s(AJD, bs="ts"), #thin plate regression spline w/ shrinkage
+                                      data = seal.dat,
+                                      weights = Pngs,
+                                      method="REML",  
+                                      family=binomial(link="logit"))
+        plot(AJD.logit)
                                             
     #Ice gam; logit link
     
-      Ice.logit <- gam(Yes/Pngs ~ s(Ice, bs="ts"), #thin plate regression spline w/ shrinkage
+      Ice.logit <- gam(Yes/Pngs ~ s(Ice, bs="ts"), 
                                           data = seal.dat,
                                           weights = Pngs,
                                           method="REML",  
@@ -232,15 +249,16 @@
                                           family=binomial(link="logit"))
       plot(Year.logit.ts)
       
-      Year.logit.cs <- gam(Yes/Pngs ~ s(Year, bs="cs", k=5), #cubic regression spline w/ shrinkage
-                                          data = seal.dat,
-                                          weights = Pngs,
-                                          method="REML",  
-                                          family=binomial(link="logit"))
-      plot(Year.logit.cs)
+      #Build model with cs smooth, just out of curiosity, to compare with ts model
+        Year.logit.cs <- gam(Yes/Pngs ~ s(Year, bs="cs", k=5), #cubic regression spline w/ shrinkage
+                                            data = seal.dat,
+                                            weights = Pngs,
+                                            method="REML",  
+                                            family=binomial(link="logit"))
+        plot(Year.logit.cs)
 
-    #Global gam; mooring as a fixed factor affecting only intercept (this is 
-    #likely a poor choice); logit link.
+    #Global gam. Mooring as a fixed factor affecting only intercept (this is 
+    #likely a poor choice). logit link.
     
       global.logit.int <- gam(Yes/Pngs ~ s(CalJulian, bs="cc") + 
                                        Mooring +               #Mooring as a fixed effect (factor) that
@@ -268,7 +286,14 @@
       plot(CalJulian.logit.GS)
       
       #I think this is the correct model because it specifies cc splines  
-      #for the global smooth and each factor level smooth.
+      #for the global smooth and also for each factor level smooth. The following
+      #is from ?mgcv::factor.smooth.interaction :
+      #  "Any singly penalized basis can be used to smooth at each factor level. 
+      #  The default is "tp", but alternatives can be supplied in the xt argument 
+      #  of s (e.g. s(x,fac,bs="fs",xt="cr") or s(x,fac,bs="fs",xt=list(bs="cr")). 
+      #  The k argument to s(...,bs="fs") refers to the basis dimension to use for 
+      #  each level of the factor variable."      
+      
         CalJulian.logit.GS.xt <- gam(Yes/Pngs ~ s(CalJulian, bs="cc", m=2) + 
                                                 s(CalJulian, Mooring, bs="fs", 
                                                   xt=list(bs="cc"), m=2), #cc
@@ -277,6 +302,46 @@
                             method="REML",                     
                             family=binomial(link="logit"))
         plot(CalJulian.logit.GS.xt)
+        
+    #AJD hgam. "GS" model structure from Pedersen et al. (2019), with mooring  
+    #as a factor in the smooth for AJD, creating a shared global trend with
+    #individual smooths for each mooring that share the smoothing parameter. 
+    #logit link. For more information on bs="fs", see  
+    #?mgcv::factor.smooth.interaction. Use "tx" splines for the global and 
+    #all factor-level smooths.
+    
+      #This model didn't run with bs="ts" and I don't know why. Maybe it's not
+      #possible to use shrinkage smoothers with bs="fs"?
+        not.run <- TRUE
+        if(!not.run){ #Do not run this code if not.run is TRUE
+          AJD.logit.GS <- gam(Yes/Pngs ~ s(AJD, bs="ts", m=2) +
+                                       s(AJD, Mooring, bs="fs", 
+                                         xt=list(bs="ts"), m=2),
+                              data = seal.dat,
+                              weights = Pngs,
+                              method="REML",                     
+                              family=binomial(link="logit"))
+          plot(AJD.logit.GS)
+        }
+      
+      #Shrinkage smoother for global; regular tp smoother for factor levels    
+        AJD.logit.GS.ts <- gam(Yes/Pngs ~ s(AJD, bs="ts", m=2) +
+                                     s(AJD, Mooring, bs="fs", m=2),
+                            data = seal.dat,
+                            weights = Pngs,
+                            method="REML",                     
+                            family=binomial(link="logit"))
+        plot(AJD.logit.GS.ts)
+      
+      #Regular tp smoothers for all smooths  
+        AJD.logit.GS.tp <- gam(Yes/Pngs ~ s(AJD, bs="tp", m=2) +
+                                     s(AJD, Mooring, bs="fs", 
+                                         xt=list(bs="tp"), m=2),
+                            data = seal.dat,
+                            weights = Pngs,
+                            method="REML",                     
+                            family=binomial(link="logit"))
+        plot(AJD.logit.GS.tp)
 
     #Ice hgam. "GS" model structure from Pedersen et al. (2019), with mooring  
     #as a factor in the smooth for Ice, creating a shared global trend with
@@ -292,30 +357,88 @@
       plot(Ice.logit.GS)
       
     #Other types of variables and models to consider:
-    # i. First, try creating a variable for "date" that incorporates year, month, 
-    #    and day. (I'm not sure if that's what ActualJulianDate is.) Use this 
-    #    as a simple way to look for year effects.
-    # ii. Also consider examining latitude of each mooring instead of 
+    # i. Consider examining latitude of each mooring instead of 
     #    mooring as a factor variable.
-    # iii. Regular gam with a bivariate smooth tensor product smooth 
+    # ii. Regular gam with a bivariate smooth tensor product smooth 
     #      te(date, latitude). From the ?te helpfile: 
     #      "Tensor product smooths are especially useful for representing 
     #       functions of covariates measured in different units, although they 
     #       are typically not quite as nicely behaved as t.p.r.s. smooths for 
     #       well scaled covariates." In other words, te smooths can be anisotropic,
     #       whereas tprs smooths are only isotropic.
-    # iv. Regular gam with a trivariate smooth: te(date, latitude, ice)
-    # v. Hierarchical gam s(date, Mooring). Here, because date is not a cyclical
+    # iii. Regular gam with a trivariate smooth: te(date, latitude, ice)
+    # iv. Hierarchical gam s(date, Mooring). Here, because date is not a cyclical
     #    variable (the ends don't need to match up), don't need to use bs="cc".
-    # vi. hgam s(date, ice, mooring).
-    # vii. Evaluate whether the logit link is appropriate. Another potential
+    # v. hgam s(date, ice, mooring).
+    # vi. Evaluate whether the logit link is appropriate. Another potential
     #    link fcn to use is the cloglog link.
-    # viii. Evaluate whether the binomial distribution is appropriate. If there
+    # vii. Evaluate whether the binomial distribution is appropriate. If there
     #   are an overwhelmingly large number of zeros in the data, a zero-inflated
     #   binomial model might be better.
           
+    #Create a fake latitude variable, numbered 1:9 from south to north based on 
+    #mooring location. Based on the mooring map in Jess's manuscript, I think
+    #the correct order is as follows:
+    # 1: NM1
+    # 2: KZ1
+    # 3: PH1
+    # 4: CL1
+    # 5: IC1
+    # 6: WT1
+    # 7: IC2
+    # 8: BF2
+    # 9: IC3
+      
+      Fake.Lat <- rep(NA, length=nrow(seal.dat))
+      Fake.Lat[which(seal.dat$Mooring == "NM1")] <- 1
+      Fake.Lat[which(seal.dat$Mooring == "KZ1")] <- 2
+      Fake.Lat[which(seal.dat$Mooring == "PH1")] <- 3
+      Fake.Lat[which(seal.dat$Mooring == "CL1")] <- 4
+      Fake.Lat[which(seal.dat$Mooring == "IC1")] <- 5
+      Fake.Lat[which(seal.dat$Mooring == "WT1")] <- 6
+      Fake.Lat[which(seal.dat$Mooring == "IC2")] <- 7
+      Fake.Lat[which(seal.dat$Mooring == "BF2")] <- 8
+      Fake.Lat[which(seal.dat$Mooring == "IC3")] <- 9
+      
+      seal.dat$Fake.Lat <- Fake.Lat
+      
+      summary(seal.dat$Fake.Lat)
+      summary(as.factor(seal.dat$Fake.Lat))
+      summary(seal.dat$Mooring)
+      
+    #Bivariate smooth of AJD and Fake.Lat. logit link.
+      
+        AJD.Fake.Lat.logit <- gam(Yes/Pngs ~ te(AJD, Fake.Lat, bs="ts"), #tensor product spline
+                                      data = seal.dat,
+                                      weights = Pngs,
+                                      method="REML",  
+                                      family=binomial(link="logit"))
+        plot(AJD.Fake.Lat.logit)
+      
+    #Trivariate smooth of AJD, Fake.Lat, and Ice. logit link.
+      
+        AJD.Fake.Lat.Ice.logit <- gam(Yes/Pngs ~ te(AJD, Fake.Lat, Ice, bs="ts"),
+                                      data = seal.dat,
+                                      weights = Pngs,
+                                      method="REML",  
+                                      family=binomial(link="logit"))
+        plot(AJD.Fake.Lat.Ice.logit) #I don't know how to interpret these!!
+          #I think each plot is showing Fake.Lat on the x-axis and AJD on the 
+          #y-axis. Then, each plot sets Ice to be a constant value and the
+          #colors and contours show the value of the spline.
           
-          
+    #AJD and Ice hgam. "GS" model structure from Pedersen et al. (2019), with mooring  
+    #as a factor in the smooth for AJD and Ice, creating a shared global trend with
+    #individual smooths for each mooring that share the smoothing parameter. 
+    #logit link.
+    
+      AJD.Ice.logit.GS <- gam(Yes/Pngs ~ s(Ice, bs="ts", m=2) + 
+                                     s(Ice, Mooring, bs="fs", m=2), 
+                            data = seal.dat,
+                            weights = Pngs,
+                            method="REML",                     
+                            family=binomial(link="logit"))
+      plot(AJD.Ice.logit.GS)
           
           
           
