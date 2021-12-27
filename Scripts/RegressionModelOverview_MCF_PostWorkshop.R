@@ -469,16 +469,16 @@
       #Make Month a factor 
         seal.dat.noNA <- cbind.data.frame(seal.dat.noNA, "mo.fact"=as.factor(seal.dat.noNA$Month))
 
-      #Build CalJulian.Ice.mo.fact model  
-        CalJulian.Ice.mo.fact.logit.GS <- gam(Yes/Pngs ~ te(CalJulian, Ice, bs=c("cc","tp"), m=2) + 
-                                                       t2(CalJulian, Ice, mo.fact, 
+      #Build CalJulian.Ice.Mooring model  
+        CalJulian.Ice.Mooring.logit.GS <- gam(Yes/Pngs ~ te(CalJulian, Ice, bs=c("cc","tp"), m=2) + 
+                                                       t2(CalJulian, Ice, Mooring, 
                                                           bs=c("cc", "tp", "re"),
                                                           m=2, full=TRUE), 
                                                       data = seal.dat.noNA,
                                                       weights = Pngs,
                                                       method="REML",                     
                                                       family=binomial(link="logit"))
-        gam.check(CalJulian.Ice.mo.fact.logit.GS) 
+        gam.check(CalJulian.Ice.Mooring.logit.GS) 
         
         
         
@@ -495,10 +495,11 @@
           #provided in the output from gam.check represents the upper limit on the degrees of freedom
           #for that term. Because CalJulian.Ice.logit.GS used the default k value, I 
           #expected the upper limit on the degrees of freedom to be 5^2 - 1 = 25 - 1 = 24, not 19. 
+        
         #Examine residuals further to see if k is an issue 
-          resids <- residuals.gam(CalJulian.Ice.mo.fact.logit.GS)
+          resids <- residuals.gam(CalJulian.Ice.Mooring.logit.GS)
           dat <- cbind.data.frame(seal.dat.noNA, resids)
-          CalJulian.Ice.mo.fact.logit.GS.resids <- gam(resids ~ te(CalJulian, Ice, bs=c("cc","tp"), m=2, k=20), 
+          CalJulian.Ice.Mooring.logit.GS.resids <- gam(resids ~ te(CalJulian, Ice, bs=c("cc","tp"), m=2, k=20), 
                                                                             data = dat,
                                                                             method="REML",                     
                                                                             family=normal)
@@ -514,7 +515,7 @@
         
       
       #Try increasing k. See mgcv helpfiles for choose.k, te, and gam.check  
-        CalJulian.Ice.logit.GS.k20 <- gam(Yes/Pngs ~ te(CalJulian, Ice, bs=c("cc","tp"), m=2, k=20) + 
+        CalJulian.Ice.Mooring.logit.GS.k20 <- gam(Yes/Pngs ~ te(CalJulian, Ice, bs=c("cc","tp"), m=2, k=20) + 
                                          t2(CalJulian, Ice, Mooring, 
                                             bs=c("cc", "tp", "re"),
                                             m=2, full=TRUE), 
@@ -522,11 +523,11 @@
                                         weights = Pngs,
                                         method="REML",                     
                                         family=binomial(link="logit"))
-        gam.check(CalJulian.Ice.logit.GS.k20)
+        gam.check(CalJulian.Ice.Mooring.logit.GS.k20)
         
         #Examine residuals further to see if k is an issue 
-          resids.k20 <- residuals.gam(CalJulian.Ice.logit.GS.k20)
-          CalJulian.Ice.logit.GS.k20.resids <- gam(Yes/Pngs ~ te(CalJulian, Ice, bs=c("cc","tp"), m=2, k=25), 
+          resids.k20 <- residuals.gam(CalJulian.Ice.Mooring.logit.GS.k20)
+          CalJulian.Ice.Mooring.logit.GS.k20.resids <- gam(Yes/Pngs ~ te(CalJulian, Ice, bs=c("cc","tp"), m=2, k=25), 
                                                               data = seal.dat,
                                                               weights = Pngs,
                                                               method="REML",                     
