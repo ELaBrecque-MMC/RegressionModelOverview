@@ -451,27 +451,67 @@
     # v. Evaluate whether the binomial distribution is appropriate. If there
     #   are an overwhelmingly large number of zeros in the data, a zero-inflated
     #   binomial model might be better.
+
         
         
-    #Models that MCF added on 12.27
         
-      CalJulian.Ice.logit.GS <- gam(Yes/Pngs ~ te(CalJulian, Ice, bs=c("cc","tp"), m=2) + 
-                                         t2(CalJulian, Ice, Mooring, 
-                                            bs=c("cc", "tp", "re"),
-                                            m=2, full=TRUE), 
-                                        data = seal.dat,
-                                        weights = Pngs,
-                                        method="REML",                     
-                                        family=binomial(link="logit"))
-      gam.check(CalJulian.Ice.logit.GS)
-      #Examine residuals further to see if k is an issue 
-        resids <- residuals.gam(CalJulian.Ice.logit.GS)
-        CalJulian.Ice.logit.GS.resids <- gam(Yes/Pngs ~ te(CalJulian, Ice, bs=c("cc","tp"), m=2, k=20), 
-                                                              data = seal.dat,
-                                                              weights = Pngs,
-                                                              method="REML",                     
-                                                              family=binomial(link="logit"))
+        
+                
+        
+    #Models that MCF added on 12.27.
+        
+      #Explicitly omit NA data so that we know what dataset we're working with
+        
+        idx <- which(is.na(seal.dat$Yes) == TRUE)
+        seal.dat.noNA <- seal.dat[-idx,]
+        summary(seal.dat.noNA)
+        
+      #Make Month a factor 
+        seal.dat.noNA <- cbind.data.frame(seal.dat.noNA, "mo.fact"=as.factor(seal.dat.noNA$Month))
+
+      #Build CalJulian.Ice.mo.fact model  
+        CalJulian.Ice.mo.fact.logit.GS <- gam(Yes/Pngs ~ te(CalJulian, Ice, bs=c("cc","tp"), m=2) + 
+                                                       t2(CalJulian, Ice, mo.fact, 
+                                                          bs=c("cc", "tp", "re"),
+                                                          m=2, full=TRUE), 
+                                                      data = seal.dat.noNA,
+                                                      weights = Pngs,
+                                                      method="REML",                     
+                                                      family=binomial(link="logit"))
+        gam.check(CalJulian.Ice.mo.fact.logit.GS) 
+        
+        
+        
+        
+        
+          #This says that the term te(CalJulian, Ice) has k' = 19.0. I'm not sure why it was 19. 
+          #The helpfile for te() says the default k is 5^d, and I think d is the number of dimensions
+          #in the smooth, which would be 2 in this case. The te() helpfile also says that if
+          #k is supplied as a single number, that basis dimension is used for each basis. If k
+          #is supplied as an array, then the elements are the dimensions of the component
+          #marginal bases of the tensor product. The choose.k helpfile says that, for
+          #te smooths, the upper limit of the degrees of freedom is given by the product of the 
+          #k values provided for each marginal smooth, less one for the constraint. It seems like k' 
+          #provided in the output from gam.check represents the upper limit on the degrees of freedom
+          #for that term. Because CalJulian.Ice.logit.GS used the default k value, I 
+          #expected the upper limit on the degrees of freedom to be 5^2 - 1 = 25 - 1 = 24, not 19. 
+        #Examine residuals further to see if k is an issue 
+          resids <- residuals.gam(CalJulian.Ice.mo.fact.logit.GS)
+          dat <- cbind.data.frame(seal.dat.noNA, resids)
+          CalJulian.Ice.mo.fact.logit.GS.resids <- gam(resids ~ te(CalJulian, Ice, bs=c("cc","tp"), m=2, k=20), 
+                                                                            data = dat,
+                                                                            method="REML",                     
+                                                                            family=normal)
       
+        
+        
+        
+        
+        
+        
+        
+        
+        
       
       #Try increasing k. See mgcv helpfiles for choose.k, te, and gam.check  
         CalJulian.Ice.logit.GS.k20 <- gam(Yes/Pngs ~ te(CalJulian, Ice, bs=c("cc","tp"), m=2, k=20) + 
