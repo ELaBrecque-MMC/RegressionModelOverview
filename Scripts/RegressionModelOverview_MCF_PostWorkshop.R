@@ -497,12 +497,12 @@
           #expected the upper limit on the degrees of freedom to be 5^2 - 1 = 25 - 1 = 24, not 19. 
         
         #Examine residuals further to see if k is an issue 
-          resids <- residuals.gam(CalJulian.Ice.Mooring.logit.GS)
-          dat <- cbind.data.frame(seal.dat.noNA, resids)
-          CalJulian.Ice.Mooring.logit.GS.resids <- gam(resids ~ te(CalJulian, Ice, bs=c("cc","tp"), m=2, k=20), 
-                                                                            data = dat,
-                                                                            method="REML",                     
-                                                                            family=normal)
+#          resids <- residuals.gam(CalJulian.Ice.Mooring.logit.GS)
+#          dat <- cbind.data.frame(seal.dat.noNA, resids)
+#          CalJulian.Ice.Mooring.logit.GS.resids <- gam(resids ~ te(CalJulian, Ice, bs=c("cc","tp"), m=2, k=20), 
+#                                                                            data = dat,
+#                                                                            method="REML",                     
+#                                                                            family=normal)
       
         
         
