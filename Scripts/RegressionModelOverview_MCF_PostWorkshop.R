@@ -512,6 +512,12 @@
           #smooth to the residuals, using a substantially increased k to see if there is pattern in the 
           #residuals that could potentially be explained by increasing k." 
           #
+          #"The obvious, but more costly, alternative is simply to increase the suspect k and refit the 
+          #original model. If there are no statistically important changes as a result of doing this,
+          #then k was large enough. (Change in the smoothness selection criterion, and/or the effective 
+          #degrees of freedom, when k is increased, provide the obvious numerical measures for whether 
+          #the fit has changed substantially.)"
+          #
           #The gam.check helpfile says:
           #"The test of whether the basis dimension for a smooth is adequate (Wood, 2017, section 5.9) 
           #is based on computing an estimate of the residual variance based on differencing residuals 
@@ -649,15 +655,65 @@
           #edf for CalJulian.Ice.Mooring.logit.GS.k20: 298
           #edf for CalJulian.Ice.Mooring.logit.GS.k25: 436
           #edf for CalJulian.Ice.Mooring.logit.GS.k30:
+        
+          #REML for CalJulian.Ice.Mooring.logit.GS: 
+          #REML for CalJulian.Ice.Mooring.logit.GS.k20: 
+          #REML for CalJulian.Ice.Mooring.logit.GS.k25: 
+          #REML for CalJulian.Ice.Mooring.logit.GS.k30:
+        
           
+      #Try increasing k to 30 for BOTH SMOOTH TERMS in the calling rate gam.  
+        CalJulian.Ice.Mooring.logit.GS.k30.30 <- gam(Yes/Pngs ~ te(CalJulian, Ice, bs=c("cc","tp"), m=2, k=30) + 
+                                         t2(CalJulian, Ice, Mooring, 
+                                            bs=c("cc", "tp", "re"),
+                                            m=2, full=TRUE, k=30), 
+                                        data = seal.dat.noNA,
+                                        weights = Pngs,
+                                        method="REML",                     
+                                        family=binomial(link="logit"))
+        summary(CalJulian.Ice.Mooring.logit.GS.k30.30)
+          #
+        
+        gam.check(CalJulian.Ice.Mooring.logit.GS.k30.30)
+          #edf for CalJulian.Ice.Mooring.logit.GS:
+            summary(CalJulian.Ice.Mooring.logit.GS)$edf        
+           
+          #edf for CalJulian.Ice.Mooring.logit.GS.k20:
+            summary(CalJulian.Ice.Mooring.logit.GS.k20)$edf
+            
+          #edf for CalJulian.Ice.Mooring.logit.GS.k25:
+            summary(CalJulian.Ice.Mooring.logit.GS.k25)$edf
+        
+          #edf for CalJulian.Ice.Mooring.logit.GS.k30:
+            summary(CalJulian.Ice.Mooring.logit.GS.k30)$edf        
+           
+          #edf for CalJulian.Ice.Mooring.logit.GS.k30.30:
+            summary(CalJulian.Ice.Mooring.logit.GS.k30.30)$edf
+            
+          #REML for CalJulian.Ice.Mooring.logit.GS:
+            summary(CalJulian.Ice.Mooring.logit.GS)$sp.criterion
+        
+          #REML for CalJulian.Ice.Mooring.logit.GS.k20:
+            summary(CalJulian.Ice.Mooring.logit.GS.k20)$sp.criterion
+            
+          #REML for CalJulian.Ice.Mooring.logit.GS.k25:
+            summary(CalJulian.Ice.Mooring.logit.GS.k25)$sp.criterion
+        
+          #REML for CalJulian.Ice.Mooring.logit.GS.k30:
+            summary(CalJulian.Ice.Mooring.logit.GS.k30)$sp.criterion
+        
+          #REML for CalJulian.Ice.Mooring.logit.GS.k30.30:
+            summary(CalJulian.Ice.Mooring.logit.GS.k30.30)$sp.criterion
         
         
+
+            
+            
+            
+                    
         
-        
-        
-        
-        
-      #Go through the choose.k steps for a simpler model, CalJulian.logit.GS, defined above as:
+      #Go through the choose.k steps for a simpler model, CalJulian.logit.GS, defined above, but redefined
+      #here using seal.dat.noNA:
         
         CalJulian.logit.GS <- gam(Yes/Pngs ~ s(CalJulian, bs="cc", m=2) +
                                              s(CalJulian, Mooring, bs="fs", m=2), 
@@ -706,12 +762,48 @@
                                         family=binomial(link="logit"))  
           summary(CalJulian.logit.GS.k40)
           gam.check(CalJulian.logit.GS.k40)
-            #s(CalJulian): k' = 38; edf = 35.7; p-value associated with k-index not significant
-            #s(CalJulian,Mooring): k' = 360; edf = 330.9; p-value associated with k-index not significant
           plot(CalJulian.logit.GS.k40)
           
+        #Try k=50 for both smooth terms
+          CalJulian.logit.GS.k50 <- gam(Yes/Pngs ~ s(CalJulian, bs="cc", m=2, k=50) +
+                                           s(CalJulian, Mooring, bs="fs", m=2, k=50), 
+                                        data = seal.dat.noNA,
+                                        weights = Pngs,
+                                        method="REML",                     
+                                        family=binomial(link="logit"))  
+          summary(CalJulian.logit.GS.k50)
+          gam.check(CalJulian.logit.GS.k50)
+          plot(CalJulian.logit.GS.k40)
           
+          #edf for CalJulian.logit.GS: 
+            summary(CalJulian.logit.GS)$edf  
+            
+          #edf for CalJulian.logit.GS.k20:  
+            summary(CalJulian.logit.GS.k20)$edf
+            
+          #edf for CalJulian.logit.GS.k30:
+            summary(CalJulian.logit.GS.k30)$edf
+            
+          #edf for CalJulian.logit.GS.k40:   
+            summary(CalJulian.logit.GS.k40)$edf
           
+          #edf for CalJulian.logit.GS.k50:   
+            summary(CalJulian.logit.GS.k50)$edf
+            
+          #REML for CalJulian.logit.GS: 
+            summary(CalJulian.logit.GS)$sp.criterion  
+            
+          #REML for CalJulian.logit.GS.k20:  
+            summary(CalJulian.logit.GS.k20)$sp.criterion
+            
+          #REML for CalJulian.logit.GS.k30:
+            summary(CalJulian.logit.GS.k30)$sp.criterion
+            
+          #REML for CalJulian.logit.GS.k40:   
+            summary(CalJulian.logit.GS.k40)$sp.criterion
+          
+          #REML for CalJulian.logit.GS.k50:   
+            summary(CalJulian.logit.GS.k50)$sp.criterion
           
           
           
