@@ -460,9 +460,10 @@
         
     #Models that MCF added on 12.27.
         
-      #Explicitly omit NA data so that we know what dataset we're working with
+      #Explicitly omit Yes == NA & Pngs == 0 data so that we know what dataset we're working with
         
-        idx <- which(is.na(seal.dat$Yes) == TRUE)
+        idx <- which(is.na(seal.dat$Yes) == TRUE |
+                       seal.dat$Pngs == 0)
         seal.dat.noNA <- seal.dat[-idx,]
         summary(seal.dat.noNA)
         
@@ -479,42 +480,77 @@
                                                       method="REML",                     
                                                       family=binomial(link="logit"))
         gam.check(CalJulian.Ice.Mooring.logit.GS) 
-        
-        
-        
-        
-        
-          #This says that the term te(CalJulian, Ice) has k' = 19.0. I'm not sure why it was 19. 
+          #This output says that the term te(CalJulian, Ice) has k' = 19.0. I'm not sure why it was 19. 
           #The helpfile for te() says the default k is 5^d, and I think d is the number of dimensions
           #in the smooth, which would be 2 in this case. The te() helpfile also says that if
-          #k is supplied as a single number, that basis dimension is used for each basis. If k
-          #is supplied as an array, then the elements are the dimensions of the component
-          #marginal bases of the tensor product. The choose.k helpfile says that, for
-          #te smooths, the upper limit of the degrees of freedom is given by the product of the 
-          #k values provided for each marginal smooth, less one for the constraint. It seems like k' 
-          #provided in the output from gam.check represents the upper limit on the degrees of freedom
-          #for that term. Because CalJulian.Ice.logit.GS used the default k value, I 
-          #expected the upper limit on the degrees of freedom to be 5^2 - 1 = 25 - 1 = 24, not 19. 
+          #k is supplied as a single number, that number is the basis dimension for each basis. If k
+          #is supplied as an array, then the elements of array k are the dimensions of the component
+          #marginal bases of the tensor product. 
+          #
+          #The choose.k helpfile says that, for te smooths, the upper limit of the degrees of freedom 
+          #is given by the product of the k values provided for each marginal smooth, less one for 
+          #the constraint. It seems like k' provided in the output from gam.check represents the upper 
+          #limit on the degrees of freedom for that term. Because CalJulian.Ice.Mooring.logit.GS used 
+          #the default k value, I expected the upper limit on the degrees of freedom to be 
+          #5^2 - 1 = 25 - 1 = 24, not 19. I don't have a good explanation for this right now.
+          #
+          #choose.k helpfile also says:
+          #"As with all model assumptions, it is useful to be able to check the choice of k informally. 
+          #If the effective degrees of freedom for a model term are estimated to be much less than k-1 
+          #then this is unlikely to be very worthwhile, but as the EDF approach k-1, checking can be 
+          #important. A useful general purpose approach goes as follows: (i) fit your model and extract 
+          #the deviance residuals; (ii) for each smooth term in your model, fit an equivalent, single, 
+          #smooth to the residuals, using a substantially increased k to see if there is pattern in the 
+          #residuals that could potentially be explained by increasing k." 
+          #
+          #The gam.check helpfile says:
+          #"The test of whether the basis dimension for a smooth is adequate (Wood, 2017, section 5.9) 
+          #is based on computing an estimate of the residual variance based on differencing residuals 
+          #that are near neighbours according to the (numeric) covariates of the smooth. This estimate 
+          #divided by the residual variance is the k-index reported. The further below 1 this is, the
+          #more likely it is that there is missed pattern left in the residuals. The p-value is computed 
+          #by simulation: the residuals are randomly re-shuffled k.rep times to obtain the null 
+          #distribution of the differencing variance estimator, if there is no pattern in the residuals. 
+          #For models fitted to more than k.sample data, the tests are based of k.sample randomly sampled 
+          #data. Low p-values may indicate that the basis dimension, k, has been set too low, especially 
+          #if the reported edf is close to k', the maximum possible EDF for the term. Note the disconcerting 
+          #fact that if the test statistic itself is based on random resampling and the null is true,
+          #then the associated p-values will of course vary widely from one replicate to the next. Currently 
+          #smooths of factor variables are not supported and will give an NA p-value."
+          #
+          #"Doubling a suspect k and re-fitting is sensible: if the reported edf increases substantially 
+          #then you may have been missing something in the first fit. Of course p-values can be low for 
+          #reasons other than a too low k. See choose.k for fuller discussion."
+          #
+          #"Note that residuals for models fitted to binary data contain very little information useful 
+          #for model checking (it is necessary to find some way of aggregating them first), so the QQ 
+          #plot is unlikely to be useful in this case."
         
-        #Examine residuals further to see if k is an issue 
-#          resids <- residuals.gam(CalJulian.Ice.Mooring.logit.GS)
-#          dat <- cbind.data.frame(seal.dat.noNA, resids)
-#          CalJulian.Ice.Mooring.logit.GS.resids <- gam(resids ~ te(CalJulian, Ice, bs=c("cc","tp"), m=2, k=20), 
-#                                                                            data = dat,
-#                                                                            method="REML",                     
-#                                                                            family=normal)
-      
-        
-        
-        
-        
-        
-        
-        
-        
-        
-      
-      #Try increasing k. See mgcv helpfiles for choose.k, te, and gam.check  
+        #Use the guidance in choose.k to examine residuals further to see if k is an issue 
+          resids <- residuals.gam(CalJulian.Ice.Mooring.logit.GS)
+          #CK
+            length(resids)
+            dim(seal.dat.noNA)
+            summary(resids)
+              #Residuals are not binary. Try modeling them with a gaussian distribution. (See 
+              #CalJulian.Ice.Mooring.logit.GS.resids below.)
+  
+            dat <- cbind.data.frame(seal.dat.noNA, resids)
+            
+            CalJulian.Ice.Mooring.logit.GS.resids <- gam(resids ~ te(CalJulian, Ice, bs=c("cc","tp"), m=2, k=20), 
+                                                                            data = dat,
+                                                                            method="REML",                     
+                                                                            family=gaussian)
+            summary(CalJulian.Ice.Mooring.logit.GS.resids)
+              #Here, the approximate significance of the te(CalJulian,Ice) term is very high, so
+              #increasing k was able to mop up pattern remining in the residuals from 
+              #CalJulian.Ice.Mooring.logit.GS
+            
+            gam.check(CalJulian.Ice.Mooring.logit.GS.resids) 
+              #Here, k' is much higher than edf, and the p-value associated with the k-index is 
+              #not significant. Suggests k is high enough for the resid model. (But k might be too high.)
+
+      #Try increasing k for the calling rate gam.  
         CalJulian.Ice.Mooring.logit.GS.k20 <- gam(Yes/Pngs ~ te(CalJulian, Ice, bs=c("cc","tp"), m=2, k=20) + 
                                          t2(CalJulian, Ice, Mooring, 
                                             bs=c("cc", "tp", "re"),
@@ -523,17 +559,57 @@
                                         weights = Pngs,
                                         method="REML",                     
                                         family=binomial(link="logit"))
-        gam.check(CalJulian.Ice.Mooring.logit.GS.k20)
+        summary(CalJulian.Ice.Mooring.logit.GS.k20)
+          #Both the te() and t2() terms are highly significant, according to the approx. p-value
         
-        #Examine residuals further to see if k is an issue 
+        gam.check(CalJulian.Ice.Mooring.logit.GS.k20)
+          #k' is much larger than edf. k-index for te() term is 1 and associated p-value is 0.64. 
+          #This information suggests that the k used to build this term was sufficiently high.
+        
+        #Examine residuals \
           resids.k20 <- residuals.gam(CalJulian.Ice.Mooring.logit.GS.k20)
-          CalJulian.Ice.Mooring.logit.GS.k20.resids <- gam(Yes/Pngs ~ te(CalJulian, Ice, bs=c("cc","tp"), m=2, k=25), 
-                                                              data = seal.dat,
-                                                              weights = Pngs,
+          dat.k20 <- dat
+          dat.k20$resids <- resids.k20
+          
+          CalJulian.Ice.Mooring.logit.GS.k20.resids <- gam(resids ~ te(CalJulian, Ice, bs=c("cc","tp"), m=2, k=25), 
+                                                              data = dat.k20,
                                                               method="REML",                     
-                                                              family=binomial(link="logit"))
+                                                              family=gaussian)
           
+          summary(CalJulian.Ice.Mooring.logit.GS.k20.resids)
           
+          gam.check(CalJulian.Ice.Mooring.logit.GS.k20.resids)
+            #k-index is barely significant. I think this means that k=25 is overkill, but try building
+            #a calling rate model with k=25 to compare.
+          
+      #Try increasing k to 25 for the calling rate gam.  
+        CalJulian.Ice.Mooring.logit.GS.k25 <- gam(Yes/Pngs ~ te(CalJulian, Ice, bs=c("cc","tp"), m=2, k=25) + 
+                                         t2(CalJulian, Ice, Mooring, 
+                                            bs=c("cc", "tp", "re"),
+                                            m=2, full=TRUE), 
+                                        data = seal.dat,
+                                        weights = Pngs,
+                                        method="REML",                     
+                                        family=binomial(link="logit"))
+        summary(CalJulian.Ice.Mooring.logit.GS.k25)
+          #
+        
+        gam.check(CalJulian.Ice.Mooring.logit.GS.k25)
+          #
+        
+        #Examine residuals 
+          resids.k25 <- residuals.gam(CalJulian.Ice.Mooring.logit.GS.k25)
+          dat.k25 <- dat
+          dat.k25$resids <- resids.k25
+          
+          CalJulian.Ice.Mooring.logit.GS.k25.resids <- gam(resids ~ te(CalJulian, Ice, bs=c("cc","tp"), m=2, k=30), 
+                                                              data = dat.k25,
+                                                              method="REML",                     
+                                                              family=gaussian)
+          
+          summary(CalJulian.Ice.Mooring.logit.GS.k25.resids)
+          
+          gam.check(CalJulian.Ice.Mooring.logit.GS.k25.resids)
           
           
           
