@@ -1,4 +1,4 @@
-#Script RegressionModelOverview_MCF_PostWorkshop.r...Megan C. Ferguson...27 December 2021
+#Script RegressionModelOverview_MCF_PostWorkshop.r...Megan C. Ferguson...28 December 2021
 
   library(ggplot2)
 
@@ -495,6 +495,15 @@
           #5^2 - 1 = 25 - 1 = 24, not 19. I don't have a good explanation for this right now.
           #
           #choose.k helpfile also says:
+          #
+          #"Penalized regression smoothers gain computational efficiency by virtue of being defined 
+          #using a basis of relatively modest size, k."
+          #
+          #"exact choice of k is not generally critical: it should be chosen to be large enough that 
+          #you are reasonably sure of having enough degrees of freedom to represent the underlying ‘truth’
+          #reasonably well, but small enough to maintain reasonable computational efficiency. Clearly 
+          #‘large’ and ‘small’ are dependent on the particular problem being addressed."
+          #
           #"As with all model assumptions, it is useful to be able to check the choice of k informally. 
           #If the effective degrees of freedom for a model term are estimated to be much less than k-1 
           #then this is unlikely to be very worthwhile, but as the EDF approach k-1, checking can be 
@@ -526,7 +535,9 @@
           #for model checking (it is necessary to find some way of aggregating them first), so the QQ 
           #plot is unlikely to be useful in this case."
         
-        #Use the guidance in choose.k to examine residuals further to see if k is an issue 
+        #The p-value associated with the k-index for the te(CalJulian, Ice) term in the 
+        #CalJulian.Ice.Mooring.logit.GS models is significant. Use the guidance in choose.k to examine 
+        #residuals further to see if k is an issue 
           resids <- residuals.gam(CalJulian.Ice.Mooring.logit.GS)
           #CK
             length(resids)
@@ -543,19 +554,21 @@
                                                                             family=gaussian)
             summary(CalJulian.Ice.Mooring.logit.GS.resids)
               #Here, the approximate significance of the te(CalJulian,Ice) term is very high, so
-              #increasing k was able to mop up pattern remining in the residuals from 
+              #increasing k was able to mop up pattern remaining in the residuals from 
               #CalJulian.Ice.Mooring.logit.GS
             
             gam.check(CalJulian.Ice.Mooring.logit.GS.resids) 
               #Here, k' is much higher than edf, and the p-value associated with the k-index is 
-              #not significant. Suggests k is high enough for the resid model. (But k might be too high.)
+              #not significant. Suggests k is high enough for the resid model. k might be too
+              #high now, but that's really just a computational burden, not a model mis-specification.
 
       #Try increasing k for the calling rate gam.  
         CalJulian.Ice.Mooring.logit.GS.k20 <- gam(Yes/Pngs ~ te(CalJulian, Ice, bs=c("cc","tp"), m=2, k=20) + 
                                          t2(CalJulian, Ice, Mooring, 
                                             bs=c("cc", "tp", "re"),
                                             m=2, full=TRUE), 
-                                        data = seal.dat,
+                                        data = seal.dat.noNA,
+                                        
                                         weights = Pngs,
                                         method="REML",                     
                                         family=binomial(link="logit"))
@@ -563,10 +576,14 @@
           #Both the te() and t2() terms are highly significant, according to the approx. p-value
         
         gam.check(CalJulian.Ice.Mooring.logit.GS.k20)
-          #k' is much larger than edf. k-index for te() term is 1 and associated p-value is 0.64. 
-          #This information suggests that the k used to build this term was sufficiently high.
+          #k' is much larger than edf for the te() term. k-index for te() term is ~1 and associated 
+          #p-value is not significant (the exact p-value will vary each time you call gam.check because
+          #it's derived from simulations). This information suggests that the k used to build this term was 
+          #sufficiently high. Also note that the edf for the te() term in this model is 298 compared to 17.6 
+          #for CalJulian.Ice.Mooring.logit.GS, providing more evidence that k was insufficiently high in
+          #CalJulian.Ice.Mooring.logit.GS. 
         
-        #Examine residuals \
+        #Examine residuals 
           resids.k20 <- residuals.gam(CalJulian.Ice.Mooring.logit.GS.k20)
           dat.k20 <- dat
           dat.k20$resids <- resids.k20
@@ -579,15 +596,16 @@
           summary(CalJulian.Ice.Mooring.logit.GS.k20.resids)
           
           gam.check(CalJulian.Ice.Mooring.logit.GS.k20.resids)
-            #k-index is barely significant. I think this means that k=25 is overkill, but try building
-            #a calling rate model with k=25 to compare.
+            #First time I ran this, k-index was barely significant. Next time I ran it, k-index was not
+            #significant. I think this means that k=25 is overkill, but try building
+            #a calling rate model with k=25 to compare to previous calling rate models.
           
       #Try increasing k to 25 for the calling rate gam.  
         CalJulian.Ice.Mooring.logit.GS.k25 <- gam(Yes/Pngs ~ te(CalJulian, Ice, bs=c("cc","tp"), m=2, k=25) + 
                                          t2(CalJulian, Ice, Mooring, 
                                             bs=c("cc", "tp", "re"),
                                             m=2, full=TRUE), 
-                                        data = seal.dat,
+                                        data = seal.dat.noNA,
                                         weights = Pngs,
                                         method="REML",                     
                                         family=binomial(link="logit"))
@@ -595,7 +613,9 @@
           #
         
         gam.check(CalJulian.Ice.Mooring.logit.GS.k25)
-          #
+          #edf for CalJulian.Ice.Mooring.logit.GS: 17.6
+          #edf for CalJulian.Ice.Mooring.logit.GS.k20: 298
+          #edf for CalJulian.Ice.Mooring.logit.GS.k25: 436
         
         #Examine residuals 
           resids.k25 <- residuals.gam(CalJulian.Ice.Mooring.logit.GS.k25)
@@ -610,12 +630,85 @@
           summary(CalJulian.Ice.Mooring.logit.GS.k25.resids)
           
           gam.check(CalJulian.Ice.Mooring.logit.GS.k25.resids)
+            #k-index not significant.
+
+      #Try increasing k to 30 for the calling rate gam.  
+        CalJulian.Ice.Mooring.logit.GS.k30 <- gam(Yes/Pngs ~ te(CalJulian, Ice, bs=c("cc","tp"), m=2, k=30) + 
+                                         t2(CalJulian, Ice, Mooring, 
+                                            bs=c("cc", "tp", "re"),
+                                            m=2, full=TRUE), 
+                                        data = seal.dat.noNA,
+                                        weights = Pngs,
+                                        method="REML",                     
+                                        family=binomial(link="logit"))
+        summary(CalJulian.Ice.Mooring.logit.GS.k30)
+          #
+        
+        gam.check(CalJulian.Ice.Mooring.logit.GS.k30)
+          #edf for CalJulian.Ice.Mooring.logit.GS: 17.6
+          #edf for CalJulian.Ice.Mooring.logit.GS.k20: 298
+          #edf for CalJulian.Ice.Mooring.logit.GS.k25: 436
+          #edf for CalJulian.Ice.Mooring.logit.GS.k30:
           
+        
+        
+        
+        
+        
+        
+        
+      #Go through the choose.k steps for a simpler model, CalJulian.logit.GS, defined above as:
+        
+        CalJulian.logit.GS <- gam(Yes/Pngs ~ s(CalJulian, bs="cc", m=2) +
+                                             s(CalJulian, Mooring, bs="fs", m=2), 
+                              data = seal.dat.noNA,
+                              weights = Pngs,
+                              method="REML",                     
+                              family=binomial(link="logit"))
+          summary(CalJulian.logit.GS)
+          gam.check(CalJulian.logit.GS)
+            #s(CalJulian): k' = 8; edf = 7.98; p-value associated with k-index not significant
+            #s(CalJulian,Mooring): k' = 90; edf = 87.83; p-value associated with k-index not significant
+          plot(CalJulian.logit.GS)
           
+        #Try k=20 for both smooth terms
+          CalJulian.logit.GS.k20 <- gam(Yes/Pngs ~ s(CalJulian, bs="cc", m=2, k=20) +
+                                           s(CalJulian, Mooring, bs="fs", m=2, k=20), 
+                                        data = seal.dat.noNA,
+                                        weights = Pngs,
+                                        method="REML",                     
+                                        family=binomial(link="logit"))  
+          summary(CalJulian.logit.GS.k20)
+          gam.check(CalJulian.logit.GS.k20)
+            #s(CalJulian): k' = 18; edf = 18; p-value associated with k-index not significant
+            #s(CalJulian,Mooring): k' = 180; edf = 170; p-value associated with k-index not significant
+          plot(CalJulian.logit.GS.k20)
           
+        #Try k=30 for both smooth terms
+          CalJulian.logit.GS.k30 <- gam(Yes/Pngs ~ s(CalJulian, bs="cc", m=2, k=30) +
+                                           s(CalJulian, Mooring, bs="fs", m=2, k=30), 
+                                        data = seal.dat.noNA,
+                                        weights = Pngs,
+                                        method="REML",                     
+                                        family=binomial(link="logit"))  
+          summary(CalJulian.logit.GS.k30)
+          gam.check(CalJulian.logit.GS.k30)
+            #s(CalJulian): k' = 28; edf = 26.8; p-value associated with k-index not significant
+            #s(CalJulian,Mooring): k' = 270; edf = 246.1; p-value associated with k-index not significant
+          plot(CalJulian.logit.GS.k30)
           
-          
-          
+        #Try k=40 for both smooth terms
+          CalJulian.logit.GS.k40 <- gam(Yes/Pngs ~ s(CalJulian, bs="cc", m=2, k=40) +
+                                           s(CalJulian, Mooring, bs="fs", m=2, k=40), 
+                                        data = seal.dat.noNA,
+                                        weights = Pngs,
+                                        method="REML",                     
+                                        family=binomial(link="logit"))  
+          summary(CalJulian.logit.GS.k40)
+          gam.check(CalJulian.logit.GS.k40)
+            #s(CalJulian): k' = 38; edf = 35.7; p-value associated with k-index not significant
+            #s(CalJulian,Mooring): k' = 360; edf = 330.9; p-value associated with k-index not significant
+          plot(CalJulian.logit.GS.k40)
           
           
           
