@@ -1,9 +1,11 @@
 ## Regression Model Overview Workshop
 
-<p align="center">
+<p align="center">  
+
 # Applying Regression Analysis to Investigate Spatiotemporal Variability in Bearded Seal Calls  
 by: Megan C. Ferguson
 Date: 9 December 2021  
+
 </p>
 
 
