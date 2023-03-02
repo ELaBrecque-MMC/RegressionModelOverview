@@ -4,12 +4,8 @@
 
 <h1 align="center">Applying Regression Analysis to Investigate Spatiotemporal Variability in Bearded Seal Calls</h1>  
 
-<p align="center"> 
-
-// by: Megan C. Ferguson  
-// Date: 9 December 2021  
-
-</p>
+by: Megan C. Ferguson  
+Date: 9 December 2021  
 
 
 ## Welcome  
